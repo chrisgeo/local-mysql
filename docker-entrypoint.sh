@@ -19,7 +19,7 @@ fi
 
 if [ "$1" = 'mysqld' ]; then
 	# Get config
-	DATADIR="$("$@" --verbose --help --innodb-read-only 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
+	DATADIR="$("$@" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
 	SOCKET=$(get_option  mysqld socket "$DATADIR/mysql.sock")
 	PIDFILE=$(get_option mysqld pid-file "/var/run/mysqld/mysqld.pid")
 
@@ -33,13 +33,13 @@ if [ "$1" = 'mysqld' ]; then
 		mkdir -p "$DATADIR"
 		chown -R mysql:mysql "$DATADIR"
 
-		echo 'Initializing database'
-		mysqld --initialize-insecure=on --datadir="$DATADIR"
-		echo 'Database initialized'
+		echo 'Running mysql_install_db'
+		mysql_install_db --user=mysql --datadir="$DATADIR" --rpm --keep-my-cnf
+		echo 'Finished mysql_install_db'
 
 		mysqld --user=mysql --datadir="$DATADIR" --skip-networking &
 		for i in $(seq 30 -1 0); do
-			[ -S $SOCKET ] && break
+			[ -S "$SOCKET" ] && break
 			echo 'MySQL init process in progress...'
 			sleep 1
 		done
@@ -73,7 +73,6 @@ if [ "$1" = 'mysqld' ]; then
             echo "GRANT ALL ON *.* TO '"$MYSQL_USER"'@'%' WITH GRANT OPTION ;" >> "$tempSqlFile"
 			if [ "$MYSQL_DATABASE" ]; then
 				echo "GRANT ALL ON \`"$MYSQL_DATABASE"\`.* TO '"$MYSQL_USER"'@'%' ;" >> "$tempSqlFile"
-
 			fi
 		fi
 
